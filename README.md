@@ -34,3 +34,10 @@ Ensure the following tools are installed:
 
 ```bash
 docker build -t hospital-waiting-api .
+```
+
+### 2. Run the Container
+
+```bash
+docker run -p 8000:8000 hospital-waiting-api
+```
