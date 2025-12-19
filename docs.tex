@@ -1,0 +1,180 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\lstset{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily,
+    frame=single,
+    breaklines=true,
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+}
+
+\title{Hospital Waiting Time Prediction Project}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Problem Statement}
+This project addresses the problem of predicting hospital patient waiting times in minutes. Accurate predictions can help hospitals optimize patient flow, allocate resources efficiently, and improve patient satisfaction. This is formulated as a regression problem, where the target variable is the patient waiting time.
+
+\section{Dataset and Model Description}
+\subsection{Dataset}
+The dataset consists of hospital patient records including:
+\begin{itemize}
+    \item Patient demographics
+    \item Appointment details
+    \item Consultation type
+    \item Financial information
+\end{itemize}
+
+\subsection{Features}
+\textbf{Categorical:} \texttt{doctor\_type}, \texttt{financial\_class}, \texttt{patient\_type} \\
+\textbf{Numerical:} \texttt{medication\_revenue}, \texttt{lab\_cost}, \texttt{consultation\_revenue}, \texttt{entry\_hour}, \texttt{entry\_dayofweek}, \texttt{entry\_minute}, \texttt{year}, \texttt{month}, \texttt{dayofweek} \\
+\textbf{Target:} \texttt{waiting\_time} (in minutes)
+
+\subsection{Modeling}
+\begin{itemize}
+    \item Preprocessing: One-hot encoding for categorical features, log transformation of the target variable
+    \item Models trained:
+    \begin{itemize}
+        \item Random Forest Regressor
+        \item Gradient Boosting Regressor
+        \item XGBoost Regressor
+    \end{itemize}
+    \item Best model: XGBoost Regressor
+\end{itemize}
+
+\subsection{Performance Metrics}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Model & MAE (minutes) & RMSE (minutes) & R\textsuperscript{2} \\
+\midrule
+Random Forest & 22.53 & 1849.22 & 0.0429 \\
+Gradient Boosting & 22.35 & 1842.53 & 0.0463 \\
+XGBoost & 22.35 & 1836.65 & 0.0494 \\
+\bottomrule
+\end{tabular}
+\caption{Model performance metrics}
+\end{table}
+
+\textbf{Observation:} XGBoost slightly outperforms the other models. Low R\textsuperscript{2} values indicate that waiting time depends on unobserved or noisy factors, consistent with prior hospital scheduling studies.
+
+\section{Dockerization Steps}
+\begin{enumerate}
+    \item Create \texttt{Dockerfile}:
+\begin{lstlisting}[language=bash]
+FROM python:3.10-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app.py .
+COPY hospital_waiting_model.pkl .
+EXPOSE 8000
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+\end{lstlisting}
+    \item Build the Docker image:
+\begin{lstlisting}[language=bash]
+docker build -t hospital-waiting-api .
+\end{lstlisting}
+    \item Run locally:
+\begin{lstlisting}[language=bash]
+docker run -p 8000:8000 hospital-waiting-api
+\end{lstlisting}
+    \item Push to Docker Hub:
+\begin{lstlisting}[language=bash]
+docker tag hospital-waiting-api <dockerhub-username>/hospital-waiting-api:latest
+docker push <dockerhub-username>/hospital-waiting-api:latest
+\end{lstlisting}
+\end{enumerate}
+
+\section{API Endpoints}
+\begin{itemize}
+    \item \textbf{/healthz} [GET]: Returns \texttt{\{"status": "ok"\}} to confirm the service is running
+    \item \textbf{/predict} [POST]: Accepts patient data as JSON and returns predicted waiting time in minutes
+\end{itemize}
+
+\textbf{Example /predict JSON:}
+\begin{lstlisting}[language=bash]
+{
+  "doctor_type": "General",
+  "financial_class": "Insurance",
+  "patient_type": "New",
+  "medication_revenue": 50,
+  "lab_cost": 30,
+  "consultation_revenue": 100,
+  "entry_hour": 10,
+  "entry_dayofweek": 2,
+  "entry_minute": 15,
+  "year": 2024,
+  "month": 5,
+  "dayofweek": 2
+}
+\end{lstlisting}
+
+\section{Kubernetes Deployment Steps}
+\begin{enumerate}
+    \item Create deployment:
+\begin{lstlisting}[language=bash]
+kubectl create deployment hospital-waiting --image=<dockerhub-username>/hospital-waiting-api:latest
+\end{lstlisting}
+    \item Expose service:
+\begin{lstlisting}[language=bash]
+kubectl expose deployment hospital-waiting --type=NodePort --port=8000
+\end{lstlisting}
+    \item Apply health probes:
+\begin{lstlisting}[language=bash]
+kubectl set probe deployment/hospital-waiting --liveness --get-url=http://:8000/healthz --initial-delay-seconds=10
+kubectl set probe deployment/hospital-waiting --readiness --get-url=http://:8000/healthz --initial-delay-seconds=5
+\end{lstlisting}
+    \item Export YAML:
+\begin{lstlisting}[language=bash]
+kubectl get deployment hospital-waiting -o yaml > deployment.yaml
+kubectl get service hospital-waiting -o yaml > service.yaml
+\end{lstlisting}
+\end{enumerate}
+
+\section{Health Checks}
+\begin{itemize}
+    \item \textbf{Liveness Probe}: Automatically restarts pods if `/healthz` fails
+    \item \textbf{Readiness Probe}: Ensures traffic is only sent to ready pods
+\end{itemize}
+
+\section{Horizontal Pod Autoscaler Configuration}
+\begin{itemize}
+    \item Minimum pods: 1
+    \item Maximum pods: 5
+    \item CPU threshold: 50\%
+\end{itemize}
+
+Apply via kubectl:
+
+\begin{lstlisting}[language=bash]
+kubectl autoscale deployment hospital-waiting --cpu=50% --min=1 --max=5
+kubectl get hpa
+\end{lstlisting}
+
+\section{Comparison to Related Works}
+The XGBoost model achieved:
+\begin{itemize}
+    \item MAE = 22.35 minutes
+    \item RMSE = 1836.65 minutes
+    \item R\textsuperscript{2} = 0.0494
+\end{itemize}
+
+Low R\textsuperscript{2} is consistent with prior studies predicting hospital waiting times, where many unrecorded factors influence patient flow. Ensemble tree models (Random Forest, Gradient Boosting, XGBoost) are appropriate for tabular hospital data and provide similar predictive performance.
+
+\end{document}
