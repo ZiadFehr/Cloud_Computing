@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+spec:
+  clusterIP: 10.110.162.37
+  clusterIPs:
+  - 10.110.162.37
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - nodePort: 30808
+    port: 8000
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: hospital-waiting
+  sessionAffinity: None
+  type: NodePort
+status:
+  loadBalancer: {}
