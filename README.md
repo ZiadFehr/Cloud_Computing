@@ -85,7 +85,7 @@ docker push ziadfehr/hospital-waiting-api:latest
 ### 1. Create Deployment
 
 ```bash
-kubectl create deployment hospital-waiting --image=<dockerhub-username>/hospital-waiting-api:latest
+kubectl create deployment hospital-waiting --image=ziadfehr/hospital-waiting-api:latest
 ```
 
 ### 2. Expose Service
