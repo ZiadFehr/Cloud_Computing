@@ -73,13 +73,6 @@ docker tag hospital-waiting-api ziadfehr/hospital-waiting-api:latest
 docker push ziadfehr/hospital-waiting-api:latest
 ```
 
-### Push Image to DockerHub
-
-```bash
-docker tag hospital-waiting-api ziadfehr/hospital-waiting-api:latest
-docker push ziadfehr/hospital-waiting-api:latest
-```
-
 ## Kubernetes Deployment
 
 ### 1. Create Deployment
